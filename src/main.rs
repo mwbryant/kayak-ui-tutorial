@@ -25,6 +25,105 @@ use kayak_ui::{
     widgets::Window,
 };
 
+#[derive(Component, Clone, PartialEq, Inspectable)]
+pub struct Player {
+    health: f32,
+}
+
+fn create_ui(
+    mut commands: Commands,
+    mut font_mapping: ResMut<FontMapping>,
+    asset_server: Res<AssetServer>,
+) {
+    commands
+        .spawn_bundle(UICameraBundle::new())
+        .insert(Name::new("UI Camera"));
+
+    font_mapping.set_default(asset_server.load("roboto.kayak_font"));
+
+    let context = BevyContext::new(|context| {
+        let window = Style {
+            background_color: StyleProp::Value(Color::new(0.125, 0.125, 0.125, 1.0)),
+            border_color: StyleProp::Value(Color::new(0.0781, 0.0898, 0.101, 1.0)),
+            color: StyleProp::Value(Color::new(0.5, 1.0, 1.0, 1.0)),
+            ..default()
+        };
+        let element = Style {
+            padding: StyleProp::Value(Edge::axis(Units::Percentage(0.0), Units::Percentage(10.))),
+            ..Default::default()
+        };
+
+        let font = Style {
+            color: StyleProp::Value(Color::new(0.5, 1.0, 0.0, 1.0)),
+            ..Default::default()
+        };
+
+        let button_event = OnEvent::new(|context, event| {
+            if let EventType::Click(..) = event.event_type {
+                context.query_world::<Query<&mut Player>, _, _>(|mut player_query| {
+                    for mut player in player_query.iter_mut() {
+                        player.health += 10.0;
+                    }
+                });
+            }
+        });
+
+        render! {
+            <widgets::App>
+                <widgets::Element styles={Some(element)}>
+                    <widgets::Text content={"Text printing".to_string()} size={32.0} styles={Some(font)}/>
+                </widgets::Element>
+                <Window draggable={true} position={(0.0,0.0)} size={(250.0, 250.0)} title={"Test Window".to_string()} styles={Some(window)}>
+                    <widgets::Text content={"Main Menu".to_string()} size={32.0} />
+                    <widgets::Button on_event={Some(button_event)}>
+                        <widgets::Text content={"Give Player Health".to_string()} size={24.0} />
+                    </widgets::Button>
+                </Window>
+                <CustomWidget />
+            </widgets::App>
+        }
+    });
+    commands.insert_resource(context);
+
+    let player = Player { health: 100.0 };
+    let binding = bind(player.clone());
+
+    commands.spawn().insert(player);
+    commands.insert_resource(binding);
+}
+
+fn update_heatlh(player_query: Query<&Player>, binding: Res<Binding<Player>>) {
+    let player = player_query.single();
+    binding.set(player.clone());
+}
+
+fn print_percent(percent: Res<(f32, f32)>) {
+    if percent.is_changed() {
+        println!("in game: {:?}", percent);
+    }
+}
+
+#[widget]
+fn CustomWidget() {
+    let player_binding = context.query_world::<Res<Binding<Player>>, _, _>(|player| player.clone());
+
+    context.bind(&player_binding);
+
+    let health = player_binding.get().health;
+
+    let box_color = Color::WHITE;
+    let button_color = Color::new(0.9, 0.1, 0.1, 1.0);
+
+    rsx! {
+        <>
+            <Window draggable={true} position={(550.0, 50.0)} size={(200.0, 200.0)} title={"Window 2".to_string()}>
+                <widgets::Text content={format!("Health : {}", health)} size={24.0}/>
+                <SliderBox size={(10.0, 10.0)} box_color={box_color} button_color={button_color}/>
+            </Window>
+        </>
+    }
+}
+
 #[derive(WidgetProps, Default, Debug, PartialEq, Clone)]
 pub struct SliderBoxProps {
     size: (f32, f32),
@@ -32,6 +131,7 @@ pub struct SliderBoxProps {
     button_color: Color,
 }
 
+//A 2d slider which is heavily inspired by the window widget
 #[widget]
 fn SliderBox(props: SliderBoxProps) {
     //Set up slider internal state
@@ -108,99 +208,6 @@ fn SliderBox(props: SliderBoxProps) {
     }
 }
 
-fn print_percent(percent: Res<(f32, f32)>) {
-    if percent.is_changed() {
-        println!("in game: {:?}", percent);
-    }
-}
-
-#[widget]
-fn CustomWidget() {
-    let player_binding = context.query_world::<Res<Binding<Player>>, _, _>(|player| player.clone());
-
-    context.bind(&player_binding);
-
-    let health = player_binding.get().health;
-
-    let box_color = Color::WHITE;
-    let button_color = Color::new(0.9, 0.1, 0.1, 1.0);
-    let box_color2 = Color::BLACK;
-    let button_color2 = Color::new(0.9, 0.1, 1.0, 1.0);
-
-    rsx! {
-        <>
-            <Window draggable={true} position={(550.0, 50.0)} size={(200.0, 200.0)} title={"Window 2".to_string()}>
-                <widgets::Text content={format!("Health : {}", health)} size={24.0}/>
-                <SliderBox size={(10.0, 10.0)} box_color={box_color} button_color={button_color}/>
-                //<SliderBox size={(10.0, 10.0)} box_color={box_color2} button_color={button_color2}/>
-            </Window>
-        </>
-    }
-}
-
-fn startup(
-    mut commands: Commands,
-    mut font_mapping: ResMut<FontMapping>,
-    asset_server: Res<AssetServer>,
-) {
-    commands
-        .spawn_bundle(UICameraBundle::new())
-        .insert(Name::new("UI Camera"));
-
-    font_mapping.set_default(asset_server.load("roboto.kayak_font"));
-
-    let context = BevyContext::new(|context| {
-        let window = Style {
-            background_color: StyleProp::Value(Color::new(0.125, 0.125, 0.125, 1.0)),
-            border_color: StyleProp::Value(Color::new(0.0781, 0.0898, 0.101, 1.0)),
-            color: StyleProp::Value(Color::new(0.5, 1.0, 1.0, 1.0)),
-            ..default()
-        };
-        let element = Style {
-            padding: StyleProp::Value(Edge::axis(Units::Percentage(0.0), Units::Percentage(10.))),
-            ..Default::default()
-        };
-
-        let font = Style {
-            color: StyleProp::Value(Color::new(0.5, 1.0, 0.0, 1.0)),
-            ..Default::default()
-        };
-
-        let button_event = OnEvent::new(|_, event| {
-            if let EventType::Click(..) = event.event_type {
-                println!("Clicked me!");
-            }
-        });
-
-        render! {
-            <widgets::App>
-                <widgets::Element styles={Some(element)}>
-                    <widgets::Text content={"Text printing".to_string()} size={32.0} styles={Some(font)}/>
-                </widgets::Element>
-                <Window draggable={true} position={(0.0,0.0)} size={(250.0, 250.0)} title={"Test Window".to_string()} styles={Some(window)}>
-                    <widgets::Text content={"Main Menu".to_string()} size={32.0} />
-                    <widgets::Button on_event={Some(button_event)}>
-                        <widgets::Text content={"I am a button".to_string()} size={24.0} />
-                    </widgets::Button>
-                </Window>
-                <CustomWidget />
-            </widgets::App>
-        }
-    });
-    commands.insert_resource(context);
-
-    let player = Player { health: 100.0 };
-    let binding = bind(player.clone());
-
-    commands.spawn().insert(player);
-    commands.insert_resource(binding);
-}
-
-#[derive(Component, Clone, PartialEq, Inspectable)]
-pub struct Player {
-    health: f32,
-}
-
 fn main() {
     App::new()
         .insert_resource(ClearColor(CLEAR))
@@ -222,15 +229,10 @@ fn main() {
         .add_system(toggle_inspector)
         .add_system(print_percent)
         .add_plugin(BevyKayakUIPlugin)
-        .add_startup_system(startup)
+        .add_startup_system(create_ui)
         .add_system(update_heatlh)
         .register_inspectable::<Player>()
         .run();
-}
-
-fn update_heatlh(player_query: Query<&Player>, binding: Res<Binding<Player>>) {
-    let player = player_query.single();
-    binding.set(player.clone());
 }
 
 fn spawn_camera(mut commands: Commands) {

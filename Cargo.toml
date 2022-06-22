@@ -1,5 +1,5 @@
 [package]
-name = "bevy_template"
+name = "kayak_ui_showcase"
 version = "0.1.0"
 edition = "2021"
 
@@ -23,11 +23,7 @@ bevy = { version = "0.7", features = [
     "trace"
      ] }
 
-bevy_kira_audio = { version = "0.10", features = ["ogg", "wav"] }
 bevy-inspector-egui = "0.11"
-serde = "1.0"
-ron = "0.7"
-rand = "0.8"
 kayak_ui = { git = "https://github.com/StarArawn/kayak_ui", features = [
     "bevy_renderer",
 ] }
